@@ -1,0 +1,43 @@
+# Future VPS deployment: API + self-hosted PostgreSQL.
+# Usage: copy backend/.env.example to backend/.env (SMTP, CORS) and .env.example to .env (POSTGRES_PASSWORD),
+# then `docker compose up -d --build`.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jireh
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: jireh
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jireh -d jireh"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      # Overrides any Neon URLs in backend/.env so the container talks to the local database.
+      DATABASE_URL: postgresql://jireh:${POSTGRES_PASSWORD}@db:5432/jireh
+      DIRECT_URL: postgresql://jireh:${POSTGRES_PASSWORD}@db:5432/jireh
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:4000:4000" # put nginx/Caddy (TLS) in front; set TRUST_PROXY=1
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  pgdata:
