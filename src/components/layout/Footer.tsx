@@ -175,6 +175,15 @@ export function Footer() {
           <p className="text-[13.5px] text-footer-text/70 sm:text-[14px]">
             © 2026 Jireh Healthcare Solutions. All rights reserved.
           </p>
+
+          <p className="mt-2 text-[13px] text-footer-text/60">
+            <a
+              href="/security"
+              className="underline-offset-4 transition-colors hover:text-gold hover:underline"
+            >
+              Security policy
+            </a>
+          </p>
         </div>
       </div>
     </footer>

@@ -8,6 +8,8 @@ import AboutUs from './pages/AboutUs'
 import AdvancedWoundCare from './pages/AdvancedWoundCare'
 import AirwayManagement from './pages/AirwayManagement'
 import Home from './pages/Home'
+import NotFound from './pages/NotFound'
+import Security from './pages/Security'
 import Services from './pages/Services'
 
 function Routes() {
@@ -17,7 +19,9 @@ function Routes() {
   if (path === '/care-areas/airway-management') return <AirwayManagement />
   if (path === '/care-areas/advanced-wound-care') return <AdvancedWoundCare />
   if (path === '/services') return <Services />
-  return <Home />
+  if (path === '/security') return <Security />
+  if (path === '/') return <Home />
+  return <NotFound />
 }
 
 /** Site shell: shared navbar + footer around the current route. */

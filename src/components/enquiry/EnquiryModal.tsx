@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { company } from '../../data/site'
 import { failureMessage, submitForm } from '../../lib/api'
 import { Modal } from '../ui/Modal'
@@ -32,6 +32,10 @@ export function EnquiryModal({ open, onClose }: { open: boolean; onClose: () => 
   const [sending, setSending] = useState(false)
   const [failure, setFailure] = useState('')
   const [honeypot, setHoneypot] = useState('') // spam trap: hidden from people, filled by bots
+  const openedAt = useRef(0) // second trap: bots submit instantly (set on mount = on open)
+  useEffect(() => {
+    openedAt.current = Date.now()
+  }, [])
 
   const update = (key: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setValues((v) => ({ ...v, [key]: e.target.value }))
@@ -54,11 +58,13 @@ export function EnquiryModal({ open, onClose }: { open: boolean; onClose: () => 
       profession: values.profession.trim(),
       description: values.description.trim(),
       website: honeypot,
+      elapsedMs: Date.now() - openedAt.current,
     })
     setSending(false)
     if (result.ok) {
       setSubmitted(true)
       setValues(empty)
+      setHoneypot('')
     } else if (result.kind === 'validation') {
       setErrors(result.fields as Errors)
     } else {
