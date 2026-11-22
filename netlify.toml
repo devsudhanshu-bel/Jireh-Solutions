@@ -1,3 +1,10 @@
+# Jireh Healthcare Solutions — static hosting configuration (Netlify)
+#
+# Security headers + explicit SPA routes + a real 404.
+#
+# NOTE: `connect-src` must list the deployed API origin. If VITE_API_BASE_URL points
+# somewhere else, update the CSP below to match or form submissions will be blocked.
+
 [build]
   command = "npm run build"
   publish = "dist"
@@ -5,14 +12,85 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# ---------------------------------------------------------------- headers ----
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # No inline scripts anywhere in the bundle; inline styles are required by
+    # Leaflet and Framer Motion (they set style attributes at runtime).
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; script-src-attr 'none'; worker-src 'none'; media-src 'self' blob: data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://server.arcgisonline.com https://www.google.com https://maps.gstatic.com; connect-src 'self' https://api.jirehhealthcaresolutions.com; frame-src https://www.google.com; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    # Turn the legacy XSS auditor off: it has introduced XSS in otherwise safe
+    # pages. CSP is the real defence. (Explicit 0, not an absent header.)
+    X-XSS-Protection = "0"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), display-capture=(), document-domain=(), encrypted-media=(), gamepad=(), geolocation=(), gyroscope=(), idle-detection=(), interest-cohort=(), local-fonts=(), magnetometer=(), manual=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-create=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), speaker-selection=(), storage-access=(), usb=(), web-share=(), xr-spatial-tracking=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+    X-Permitted-Cross-Domain-Policies = "none"
+    X-DNS-Prefetch-Control = "off"
+    # Cross-Origin-Embedder-Policy is intentionally NOT set here: require-corp
+    # would block the Google Fonts stylesheet, ArcGIS map tiles and the Google
+    # Maps iframe, none of which send CORP headers. It is enforced on the JSON
+    # API (which loads no subresources). Revisit only after self-hosting those
+    # third-party assets or adding `crossorigin` where the providers support it.
+
 # Long-lived caching for hashed build assets
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Single-page app: serve index.html for client-side routes such as /about-us
+# The SPA shell and the 404 must always be revalidated.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/404.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    X-Robots-Tag = "noindex, nofollow"
+
+# -------------------------------------------------------------- redirects ----
+# Only known client routes fall back to the SPA shell. Everything else is a real
+# 404 (status 404 + the custom page), so soft-404s are not indexed.
+
 [[redirects]]
-  from = "/*"
+  from = "/"
   to = "/index.html"
   status = 200
+
+[[redirects]]
+  from = "/about-us"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/about"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/services"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/security"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/care-areas/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/404.html"
+  status = 404

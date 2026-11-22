@@ -1,0 +1,100 @@
+# Semgrep rules for the Jireh codebase (SAST gate).
+#
+#   semgrep --config .semgrep.yml --error src backend/src
+#   npm run security:sast
+#
+# Project-specific invariants that must never regress. Community rule packs
+# (p/ci, p/typescript, p/react, p/express, p/secrets) can be added on top in CI.
+rules:
+  # ---------------------------------------------------------------- XSS ----
+  - id: jireh-no-unsafe-html
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Raw HTML injection sink. React escapes by default; dangerouslySetInnerHTML,
+      innerHTML and document.write bypass that. Render text instead.
+    pattern-either:
+      - pattern: 'dangerouslySetInnerHTML={...}'
+      - pattern: '$EL.innerHTML = $VALUE'
+      - pattern: 'document.write(...)'
+      - pattern: 'outerHTML = $VALUE'
+
+  - id: jireh-no-eval
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: 'Code execution sink (eval / new Function / vm.runIn*). Never on user input.'
+    pattern-either:
+      - pattern: 'eval(...)'
+      - pattern: 'new Function(...)'
+      - pattern: 'vm.runInNewContext(...)'
+      - pattern: 'vm.runInThisContext(...)'
+
+  # ------------------------------------------------------- SQL / injection --
+  - id: jireh-no-unsafe-raw-sql
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Prisma raw query that bypasses parameterisation. Use the tagged-template
+      $queryRaw/$executeRaw forms (values are bound) and never the Unsafe variants.
+    pattern-either:
+      - pattern: '$PRISMA.$queryRawUnsafe(...)'
+      - pattern: '$PRISMA.$executeRawUnsafe(...)'
+      - pattern: '$POOL.query($SQL + $INPUT)'
+
+  # ---------------------------------------------------------------- CORS ----
+  - id: jireh-cors-wildcard
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: 'Wildcard CORS origin. Use an explicit allow-list (see env.ts / corsGuard).'
+    pattern-either:
+      - pattern: 'cors({..., origin: "*", ...})'
+      - pattern: 'res.setHeader("Access-Control-Allow-Origin", "*")'
+
+  # ------------------------------------------------------------- secrets ----
+  - id: jireh-hardcoded-secret
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Hard-coded credential. Load secrets from the environment and validate them
+      at boot (backend/src/env.ts).
+    pattern-either:
+      - pattern: '$OBJ.password = "..."'
+      - pattern: '$OBJ.secret = "..."'
+      - pattern: '$OBJ.apiKey = "..."'
+      - patterns:
+          - pattern: 'const $NAME = "..."'
+          - metavariable-regex:
+              metavariable: $NAME
+              regex: '(?i).*(pass|secret|token|apikey|credential).*'
+
+  # --------------------------------------------------------- error leaks ----
+  - id: jireh-error-detail-leak
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      A response body includes an exception message/stack. Clients must only see a
+      stable machine code; details belong in the redacted log.
+    pattern-either:
+      - pattern: 'res.$METHOD(...).json({..., message: $ERR.message, ...})'
+      - pattern: 'res.$METHOD(...).json({..., stack: $ERR.stack, ...})'
+      - pattern: 'res.status(500).send($ERR)'
+
+  # --------------------------------------------------------------- TLS ------
+  - id: jireh-tls-verification-disabled
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: 'TLS certificate verification disabled (rejectUnauthorized: false).'
+    pattern: 'rejectUnauthorized: false'
+
+  # ------------------------------------------------------- header injection --
+  - id: jireh-unvalidated-email-header
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      An email header is built from a variable. Strip CR/LF (see oneLine in
+      emailTemplates.ts) to prevent header injection.
+    patterns:
+      - pattern-either:
+          - pattern: '$X.subject = $VALUE'
+          - pattern: '$X.replyTo = $VALUE'
+      - pattern-not: '$X.subject = "..."'

@@ -1,4 +1,4 @@
-import { useId, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { appointmentContent, type ServiceChoice } from '../../data/services'
 import { company } from '../../data/site'
 import { failureMessage, submitForm } from '../../lib/api'
@@ -36,6 +36,10 @@ export function AppointmentForm() {
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState('')
   const [honeypot, setHoneypot] = useState('') // spam trap: hidden from people, filled by bots
+  const openedAt = useRef(0) // second trap: bots submit instantly (set on mount)
+  useEffect(() => {
+    openedAt.current = Date.now()
+  }, [])
 
   const update =
     (key: keyof Fields) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -59,9 +63,11 @@ export function AppointmentForm() {
       email: values.email.trim(),
       service: values.service,
       website: honeypot,
+      elapsedMs: Date.now() - openedAt.current,
     })
     if (result.ok) {
       setValues(empty)
+      setHoneypot('')
       setStatus('success')
     } else if (result.kind === 'validation') {
       setErrors(result.fields as Errors)

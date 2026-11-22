@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage
 *.local
 
 # Editor directories and files
@@ -23,8 +24,24 @@ dist-ssr
 *.sln
 *.sw?
 
-# Secrets
+# Secrets — only the *.example templates are tracked
 .env
+.env.*
+!.env.example
 backend/.env
+backend/.env.*
+!backend/.env.example
 .netlify
 .claude
+
+# Keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Security tool output
+semgrep.sarif
+*.sarif
+.security-reports/

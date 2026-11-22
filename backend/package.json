@@ -14,7 +14,11 @@
     "prisma:generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
+    "security:sast": "semgrep --config ../.semgrep.yml --error src",
+    "test:security": "tsx --test test/security.test.ts",
+    "security:sast:full": "semgrep --config ../.semgrep.yml --config p/ci --config p/typescript --error src"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
@@ -37,5 +41,8 @@
     "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",
     "typescript": "~7.0.2"
+  },
+  "overrides": {
+    "effect": "3.22.1"
   }
 }

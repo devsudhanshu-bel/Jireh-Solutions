@@ -1,0 +1,8 @@
+# Jireh Healthcare Solutions — crawler policy
+# The public site is indexable. The API lives on its own origin and has no public
+# read endpoints; these rules are defence-in-depth for same-origin deploys.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /404.html

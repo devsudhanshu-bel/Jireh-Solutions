@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "security:audit": "npm audit --audit-level=high",
+    "security:sast": "semgrep --config .semgrep.yml --error src backend/src",
+    "dast": "node scripts/dast-smoke.mjs",
+    "security:sast:full": "semgrep --config .semgrep.yml --config p/ci --config p/typescript --error src backend/src"
   },
   "dependencies": {
     "framer-motion": "^14.14.0",

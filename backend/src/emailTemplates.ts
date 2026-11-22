@@ -54,7 +54,11 @@ const unesc = (s: string) =>
     .replace(/&amp;/g, '&')
 
 export const oneLine = (s: string) =>
-  s.replace(/[\r\n]+/g, ' ').trim()
+  s
+    // oxlint-disable-next-line no-control-regex -- intentionally stripping every control char
+    .replace(/[\u0000-\u001F\u007F]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
 
 export function formatWhen(d: Date) {
   const s = new Intl.DateTimeFormat('en-IN', {
